@@ -2,6 +2,7 @@
 
 namespace dayemsiddiqui\Langfuse;
 
+use dayemsiddiqui\Langfuse\Exceptions\MissingPromptVariablesException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
@@ -20,7 +21,7 @@ class Langfuse
         $this->host = config('langfuse-sdk.host');
     }
 
-    public function getPrompt(string $promptName, array $variables = []): array
+    public function getPrompt(string $promptName, array $variables = []): string
     {
         try {
             $response = Http::withBasicAuth($this->publicKey, $this->secretKey)
@@ -30,10 +31,9 @@ class Langfuse
 
             $promptData = $response->json();
 
-            // If variables are provided, you might want to process the prompt template
-            if (! empty($variables) && isset($promptData['prompt'])) {
-                dd($promptData['prompt'], $variables);
-                $promptData['prompt'] = $this->processPromptVariables($promptData['prompt'], $variables);
+            // Process the prompt template for variables
+            if (isset($promptData['prompt'])) {
+                $promptData['prompt'] = $this->processPromptVariables($promptData['prompt'], $variables, $promptName);
             }
 
             return $promptData['prompt'];
@@ -42,14 +42,55 @@ class Langfuse
         }
     }
 
-    protected function processPromptVariables(string $prompt, array $variables): string
+    protected function processPromptVariables(string $prompt, array $variables, string $promptName = ''): string
     {
-        // Simple variable replacement - you might want to use a more sophisticated template engine
+        // Validate that all required variables are provided
+        $this->validatePromptVariables($prompt, $variables, $promptName);
+
+        // Enhanced variable replacement that handles whitespace
         foreach ($variables as $key => $value) {
-            $prompt = str_replace('{{'.$key.'}}', $value, $prompt);
+            // Replace both exact matches and matches with whitespace
+            $prompt = preg_replace('/\{\{\s*'.preg_quote($key).'\s*\}\}/', $value, $prompt);
         }
 
         return $prompt;
+    }
+
+    /**
+     * Validate that all required variables in the prompt are provided
+     *
+     * @param  string  $prompt  The prompt template content
+     * @param  array  $variables  The variables provided by the user
+     * @param  string  $promptName  The name of the prompt (for better error messages)
+     *
+     * @throws MissingPromptVariablesException When required variables are missing
+     */
+    protected function validatePromptVariables(string $prompt, array $variables, string $promptName = ''): void
+    {
+        // Extract all variables from the prompt using regex
+        preg_match_all('/\{\{([^}]+)\}\}/', $prompt, $matches);
+        $requiredVariables = $matches[1] ?? [];
+
+        // Remove duplicates and trim whitespace
+        $requiredVariables = array_unique(array_map('trim', $requiredVariables));
+
+        // Check if all required variables are provided
+        $missingVariables = [];
+        foreach ($requiredVariables as $requiredVariable) {
+            if (! array_key_exists($requiredVariable, $variables)) {
+                $missingVariables[] = $requiredVariable;
+            }
+        }
+
+        // Throw custom exception if any variables are missing
+        if (! empty($missingVariables)) {
+            throw new MissingPromptVariablesException(
+                $missingVariables,
+                $variables,
+                $promptName,
+                $prompt
+            );
+        }
     }
 
     public function getPublicKey(): string
