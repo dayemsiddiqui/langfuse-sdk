@@ -2,9 +2,9 @@
 
 namespace dayemsiddiqui\Langfuse\Tests;
 
+use dayemsiddiqui\Langfuse\LangfuseServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use dayemsiddiqui\Langfuse\LangfuseServiceProvider;
 
 class TestCase extends Orchestra
 {
