@@ -8,6 +8,15 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class LangfuseServiceProvider extends PackageServiceProvider
 {
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->singleton(Langfuse::class, function ($app) {
+            return new Langfuse;
+        });
+    }
+
     public function configurePackage(Package $package): void
     {
         /*
