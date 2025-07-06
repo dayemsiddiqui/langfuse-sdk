@@ -1,17 +1,17 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "dayemsiddiqui/langfuse-sdk",
+    "description": "Laravel Langfuse SDK",
     "keywords": [
-        ":vendor_name",
+        "Dayem Siddiqui",
         "laravel",
-        ":package_slug"
+        "langfuse-sdk"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/dayemsiddiqui/langfuse-sdk",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "Dayem Siddiqui",
+            "email": "dayemsiddiqui@gmail.com",
             "role": "Developer"
         }
     ],
@@ -35,13 +35,13 @@
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "dayemsiddiqui\\Langfuse\\": "src/",
+            "dayemsiddiqui\\Langfuse\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "dayemsiddiqui\\Langfuse\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -63,10 +63,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "dayemsiddiqui\\Langfuse\\LangfuseServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "Langfuse": "dayemsiddiqui\\Langfuse\\Facades\\Langfuse"
             }
         }
     },
