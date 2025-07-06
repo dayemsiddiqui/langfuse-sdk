@@ -2,9 +2,9 @@
 
 namespace dayemsiddiqui\Langfuse;
 
+use dayemsiddiqui\Langfuse\Commands\LangfuseCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use dayemsiddiqui\Langfuse\Commands\LangfuseCommand;
 
 class LangfuseServiceProvider extends PackageServiceProvider
 {
