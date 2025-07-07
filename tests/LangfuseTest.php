@@ -2,6 +2,7 @@
 
 use dayemsiddiqui\Langfuse\Exceptions\MissingPromptVariablesException;
 use dayemsiddiqui\Langfuse\Langfuse;
+use dayemsiddiqui\Langfuse\PromptBuilder;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -12,7 +13,7 @@ beforeEach(function () {
     ]);
 });
 
-it('can get prompt without variables', function () {
+it('can get prompt builder instance', function () {
     $mockPromptData = [
         'prompt' => 'Hello World!',
     ];
@@ -22,12 +23,13 @@ it('can get prompt without variables', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt');
+    $promptBuilder = $langfuse->getPrompt('test-prompt');
 
-    expect($result)->toBe('Hello World!');
+    expect($promptBuilder)->toBeInstanceOf(PromptBuilder::class);
+    expect($promptBuilder->getPromptName())->toBe('test-prompt');
 });
 
-it('can get prompt with variables', function () {
+it('can get raw prompt content', function () {
     $mockPromptData = [
         'prompt' => 'Hello {{name}}! How are you today?',
     ];
@@ -37,9 +39,58 @@ it('can get prompt with variables', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt', ['name' => 'John']);
+    $result = $langfuse->getPrompt('test-prompt')->raw();
+
+    expect($result)->toBe('Hello {{name}}! How are you today?');
+});
+
+it('can get raw prompt content using string conversion', function () {
+    $mockPromptData = [
+        'prompt' => 'Hello {{name}}! How are you today?',
+    ];
+
+    Http::fake([
+        'api.langfuse.com/api/public/v2/prompts/test-prompt' => Http::response($mockPromptData),
+    ]);
+
+    $langfuse = new Langfuse;
+    $result = (string) $langfuse->getPrompt('test-prompt');
+
+    expect($result)->toBe('Hello {{name}}! How are you today?');
+});
+
+it('can compile prompt with variables', function () {
+    $mockPromptData = [
+        'prompt' => 'Hello {{name}}! How are you today?',
+    ];
+
+    Http::fake([
+        'api.langfuse.com/api/public/v2/prompts/test-prompt' => Http::response($mockPromptData),
+    ]);
+
+    $langfuse = new Langfuse;
+    $result = $langfuse->getPrompt('test-prompt')->compile(['name' => 'John']);
 
     expect($result)->toBe('Hello John! How are you today?');
+});
+
+it('can reuse prompt builder for multiple compilations', function () {
+    $mockPromptData = [
+        'prompt' => 'Hello {{name}}! How are you today?',
+    ];
+
+    Http::fake([
+        'api.langfuse.com/api/public/v2/prompts/test-prompt' => Http::response($mockPromptData),
+    ]);
+
+    $langfuse = new Langfuse;
+    $promptBuilder = $langfuse->getPrompt('test-prompt');
+    
+    $result1 = $promptBuilder->compile(['name' => 'John']);
+    $result2 = $promptBuilder->compile(['name' => 'Jane']);
+
+    expect($result1)->toBe('Hello John! How are you today?');
+    expect($result2)->toBe('Hello Jane! How are you today?');
 });
 
 it('throws detailed exception when single required variable is missing', function () {
@@ -54,7 +105,7 @@ it('throws detailed exception when single required variable is missing', functio
     $langfuse = new Langfuse;
 
     try {
-        $langfuse->getPrompt('test-prompt', ['name' => 'John']);
+        $langfuse->getPrompt('test-prompt')->compile(['name' => 'John']);
         expect(true)->toBeFalse('Expected MissingPromptVariablesException to be thrown');
     } catch (MissingPromptVariablesException $e) {
         expect($e->getMissingVariables())->toBe(['email']);
@@ -80,7 +131,7 @@ it('throws detailed exception when multiple required variables are missing', fun
     $langfuse = new Langfuse;
 
     try {
-        $langfuse->getPrompt('test-prompt', []);
+        $langfuse->getPrompt('test-prompt')->compile([]);
         expect(true)->toBeFalse('Expected MissingPromptVariablesException to be thrown');
     } catch (MissingPromptVariablesException $e) {
         expect($e->getMissingVariables())->toBe(['name', 'email', 'phone']);
@@ -107,7 +158,7 @@ it('throws detailed exception with partial variables provided', function () {
     $langfuse = new Langfuse;
 
     try {
-        $langfuse->getPrompt('test-prompt', ['name' => 'John', 'email' => 'john@example.com']);
+        $langfuse->getPrompt('test-prompt')->compile(['name' => 'John', 'email' => 'john@example.com']);
         expect(true)->toBeFalse('Expected MissingPromptVariablesException to be thrown');
     } catch (MissingPromptVariablesException $e) {
         expect($e->getMissingVariables())->toBe(['phone']);
@@ -130,7 +181,7 @@ it('works with extra variables provided', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt', [
+    $result = $langfuse->getPrompt('test-prompt')->compile([
         'name' => 'John',
         'extra' => 'value',
     ]);
@@ -148,7 +199,7 @@ it('handles prompts with no variables correctly', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt', ['unused' => 'variable']);
+    $result = $langfuse->getPrompt('test-prompt')->compile(['unused' => 'variable']);
 
     expect($result)->toBe('This is a static prompt without variables.');
 });
@@ -163,7 +214,7 @@ it('handles variables with whitespace correctly', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt', [
+    $result = $langfuse->getPrompt('test-prompt')->compile([
         'name' => 'John',
         'company' => 'TechCorp',
     ]);
@@ -181,7 +232,7 @@ it('handles duplicate variables correctly', function () {
     ]);
 
     $langfuse = new Langfuse;
-    $result = $langfuse->getPrompt('test-prompt', ['name' => 'John']);
+    $result = $langfuse->getPrompt('test-prompt')->compile(['name' => 'John']);
 
     expect($result)->toBe('Hello John! Nice to meet you, John.');
 });
@@ -192,4 +243,35 @@ it('can get configuration values', function () {
     expect($langfuse->getPublicKey())->toBe('test-public-key');
     expect($langfuse->getSecretKey())->toBe('test-secret-key');
     expect($langfuse->getHost())->toBe('https://api.langfuse.com');
+});
+
+// Backward compatibility tests
+it('supports legacy getCompiledPrompt method', function () {
+    $mockPromptData = [
+        'prompt' => 'Hello {{name}}! How are you today?',
+    ];
+
+    Http::fake([
+        'api.langfuse.com/api/public/v2/prompts/test-prompt' => Http::response($mockPromptData),
+    ]);
+
+    $langfuse = new Langfuse;
+    $result = $langfuse->getCompiledPrompt('test-prompt', ['name' => 'John']);
+
+    expect($result)->toBe('Hello John! How are you today?');
+});
+
+it('legacy getCompiledPrompt method works without variables', function () {
+    $mockPromptData = [
+        'prompt' => 'Hello World!',
+    ];
+
+    Http::fake([
+        'api.langfuse.com/api/public/v2/prompts/test-prompt' => Http::response($mockPromptData),
+    ]);
+
+    $langfuse = new Langfuse;
+    $result = $langfuse->getCompiledPrompt('test-prompt');
+
+    expect($result)->toBe('Hello World!');
 });

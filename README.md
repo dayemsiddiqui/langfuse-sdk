@@ -9,12 +9,13 @@ A Laravel package for interacting with the [Langfuse](https://langfuse.com) API.
 
 ## Features
 
-- 🚀 **Easy Integration**: Simple Laravel service provider integration
-- 🔧 **Variable Processing**: Automatic variable replacement in prompts with validation
-- 🎯 **Smart Validation**: Comprehensive validation with detailed error messages
-- 🛡️ **Exception Handling**: Custom exceptions with actionable error messages
-- 📝 **Template Support**: Support for `{{variable}}` and `{{ variable }}` syntax
-- 🔐 **Secure**: Built-in authentication with Langfuse API
+-   🚀 **Easy Integration**: Simple Laravel service provider integration
+-   🔗 **Chainable API**: Fluent interface for getting raw prompts or compiling with variables
+-   🔧 **Variable Processing**: Automatic variable replacement in prompts with validation
+-   🎯 **Smart Validation**: Comprehensive validation with detailed error messages
+-   🛡️ **Exception Handling**: Custom exceptions with actionable error messages
+-   📝 **Template Support**: Support for `{{variable}}` and `{{ variable }}` syntax
+-   🔐 **Secure**: Built-in authentication with Langfuse API
 
 ## Support us
 
@@ -81,34 +82,66 @@ LANGFUSE_HOST=https://cloud.langfuse.com
 
 ## Usage
 
-### Basic Usage
+### Basic Usage - Get Raw Prompt
 
 ```php
 use dayemsiddiqui\Langfuse\Langfuse;
 
 $langfuse = new Langfuse();
 
-// Get a simple prompt without variables
-$prompt = $langfuse->getPrompt('welcome-message');
-echo $prompt; // "Welcome to our application!"
+// Get a raw prompt without variable replacement
+$prompt = $langfuse->getPrompt('welcome-message')->raw();
+echo $prompt; // "Welcome to our application, {{name}}!"
+
+// Or use direct string conversion
+$prompt = (string) $langfuse->getPrompt('welcome-message');
+echo $prompt; // "Welcome to our application, {{name}}!"
 ```
 
-### Using Variables in Prompts
+### Chainable API - Compile with Variables
 
 ```php
 use dayemsiddiqui\Langfuse\Langfuse;
 
 $langfuse = new Langfuse();
 
-// Get a prompt with variables
-$prompt = $langfuse->getPrompt('user-greeting', [
-    'name' => 'John Doe',
-    'company' => 'Acme Corp'
-]);
+// Get a prompt and compile it with variables using the chainable API
+$prompt = $langfuse->getPrompt('user-greeting')
+    ->compile([
+        'name' => 'John Doe',
+        'company' => 'Acme Corp'
+    ]);
 
 // If your Langfuse prompt is: "Hello {{name}}! Welcome to {{company}}."
 // Result: "Hello John Doe! Welcome to Acme Corp."
 echo $prompt;
+```
+
+### Flexible Usage Patterns
+
+```php
+use dayemsiddiqui\Langfuse\Langfuse;
+
+$langfuse = new Langfuse();
+
+// Pattern 1: Get prompt builder for reuse
+$promptBuilder = $langfuse->getPrompt('user-template');
+
+// Use it multiple times with different variables
+$greeting1 = $promptBuilder->compile(['name' => 'Alice']);
+$greeting2 = $promptBuilder->compile(['name' => 'Bob']);
+
+// Pattern 2: Check raw content first
+$rawPrompt = $langfuse->getPrompt('email-template')->raw();
+if (str_contains($rawPrompt, '{{urgency}}')) {
+    $email = $langfuse->getPrompt('email-template')->compile([
+        'title' => 'System Alert',
+        'urgency' => 'HIGH'
+    ]);
+}
+
+// Pattern 3: One-liner for simple cases
+$message = $langfuse->getPrompt('simple-message')->compile(['user' => 'John']);
 ```
 
 ### Variable Syntax Support
@@ -120,10 +153,11 @@ The SDK supports both compact and spaced variable syntax:
 // {{name}} - compact syntax
 // {{ name }} - spaced syntax
 
-$prompt = $langfuse->getPrompt('flexible-template', [
-    'user' => 'Alice',
-    'action' => 'login'
-]);
+$prompt = $langfuse->getPrompt('flexible-template')
+    ->compile([
+        'user' => 'Alice',
+        'action' => 'login'
+    ]);
 ```
 
 ## Error Handling
@@ -140,10 +174,11 @@ try {
     $langfuse = new Langfuse();
 
     // This will throw an exception if variables are missing
-    $prompt = $langfuse->getPrompt('user-profile', [
-        'name' => 'John'
-        // Missing 'email' and 'phone' variables
-    ]);
+    $prompt = $langfuse->getPrompt('user-profile')
+        ->compile([
+            'name' => 'John'
+            // Missing 'email' and 'phone' variables
+        ]);
 } catch (MissingPromptVariablesException $e) {
     // Get detailed error information
     echo $e->getMessage();
@@ -174,8 +209,8 @@ Provided variables: name
 Hello {{name}}! Your email is {{email}} and phone is {{phone}}.
 
 💡 To fix this error:
-1. Add the missing variables to your getPrompt() call:
-   $langfuse->getPrompt('user-profile', [
+1. Add the missing variables to your compile() call:
+   $langfuse->getPrompt('user-profile')->compile([
        'name' => 'value',
        'email' => 'value',
        'phone' => 'value'
@@ -188,21 +223,25 @@ Hello {{name}}! Your email is {{email}} and phone is {{phone}}.
 
 ### `Langfuse` Class
 
-#### `getPrompt(string $promptName, array $variables = []): string`
+#### `getPrompt(string $promptName): PromptBuilder`
 
-Fetches a prompt from Langfuse and processes variables.
+Fetches a prompt from Langfuse and returns a `PromptBuilder` instance for chaining.
 
 **Parameters:**
 
-- `$promptName` (string): The name of the prompt in Langfuse
-- `$variables` (array, optional): Associative array of variables to replace in the prompt
+-   `$promptName` (string): The name of the prompt in Langfuse
 
-**Returns:** `string` - The processed prompt with variables replaced
+**Returns:** `PromptBuilder` - A builder instance that can be chained
 
 **Throws:**
 
-- `MissingPromptVariablesException` - When required variables are missing
-- `Exception` - When API request fails
+-   `Exception` - When API request fails
+
+#### `getCompiledPrompt(string $promptName, array $variables = []): string`
+
+**⚠️ Deprecated** - Use `getPrompt($promptName)->compile($variables)` instead.
+
+Legacy method for backward compatibility that directly returns a compiled prompt.
 
 #### `getPublicKey(): string`
 
@@ -215,6 +254,40 @@ Returns the configured secret key.
 #### `getHost(): string`
 
 Returns the configured Langfuse host URL.
+
+### `PromptBuilder` Class
+
+#### `compile(array $variables): string`
+
+Compiles the prompt with the provided variables.
+
+**Parameters:**
+
+-   `$variables` (array): Associative array of variables to replace in the prompt
+
+**Returns:** `string` - The compiled prompt with variables replaced
+
+**Throws:**
+
+-   `MissingPromptVariablesException` - When required variables are missing
+
+#### `raw(): string`
+
+Returns the raw prompt content without variable replacement.
+
+**Returns:** `string` - The original prompt template
+
+#### `__toString(): string`
+
+Allows direct string conversion to get raw content.
+
+**Returns:** `string` - The original prompt template
+
+#### `getPromptName(): string`
+
+Returns the name of the prompt.
+
+**Returns:** `string` - The prompt name
 
 ### `MissingPromptVariablesException` Class
 
@@ -242,7 +315,7 @@ Returns the original prompt template content.
 use dayemsiddiqui\Langfuse\Exceptions\MissingPromptVariablesException;
 
 try {
-    $prompt = $langfuse->getPrompt('template-name', $variables);
+    $prompt = $langfuse->getPrompt('template-name')->compile($variables);
 } catch (MissingPromptVariablesException $e) {
     // Log the error or show user-friendly message
     logger()->error('Prompt template error: ' . $e->getMessage());
@@ -273,14 +346,55 @@ class EmailService
 
     public function sendWelcomeEmail(User $user): void
     {
-        $emailBody = $this->langfuse->getPrompt('welcome-email', [
-            'name' => $user->name,
-            'email' => $user->email,
-        ]);
+        $emailBody = $this->langfuse->getPrompt('welcome-email')
+            ->compile([
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
 
         // Send email...
     }
 }
+```
+
+### 4. Reuse Prompt Builders
+
+```php
+// Efficient for multiple compilations
+$promptBuilder = $langfuse->getPrompt('user-notification');
+
+foreach ($users as $user) {
+    $notification = $promptBuilder->compile([
+        'name' => $user->name,
+        'message' => $user->message,
+    ]);
+
+    // Send notification...
+}
+```
+
+## Migration Guide
+
+If you're upgrading from a previous version, here's how to migrate:
+
+### Old API (Deprecated)
+
+```php
+// Old way - still works but deprecated
+$prompt = $langfuse->getPrompt('template', ['name' => 'John']);
+
+// For backward compatibility, you can use:
+$prompt = $langfuse->getCompiledPrompt('template', ['name' => 'John']);
+```
+
+### New Chainable API
+
+```php
+// New way - recommended
+$prompt = $langfuse->getPrompt('template')->compile(['name' => 'John']);
+
+// For raw prompts
+$rawPrompt = $langfuse->getPrompt('template')->raw();
 ```
 
 ## Testing
@@ -324,8 +438,8 @@ Please review [our security policy](../../security/policy) on how to report secu
 
 ## Credits
 
-- [Dayem Siddiqui](https://github.com/dayemsiddiqui)
-- [All Contributors](../../contributors)
+-   [Dayem Siddiqui](https://github.com/dayemsiddiqui)
+-   [All Contributors](../../contributors)
 
 ## License
 
