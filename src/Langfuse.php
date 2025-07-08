@@ -2,11 +2,8 @@
 
 namespace dayemsiddiqui\Langfuse;
 
-use dayemsiddiqui\Langfuse\Exceptions\MissingPromptVariablesException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-use dayemsiddiqui\Langfuse\PromptBuilder;
-
 
 class Langfuse
 {
@@ -15,6 +12,8 @@ class Langfuse
     protected string $secretKey;
 
     protected string $host;
+
+    protected bool $isFake = false;
 
     public function __construct()
     {
@@ -44,7 +43,7 @@ class Langfuse
 
     /**
      * Legacy method for backward compatibility - directly get compiled prompt
-     * 
+     *
      * @deprecated Use getPrompt($promptName)->compile($variables) instead
      */
     public function getCompiledPrompt(string $promptName, array $variables = []): string
@@ -65,5 +64,23 @@ class Langfuse
     public function getHost(): string
     {
         return $this->host;
+    }
+
+    /**
+     * Mark this instance as a fake
+     */
+    public function markAsFake(): self
+    {
+        $this->isFake = true;
+
+        return $this;
+    }
+
+    /**
+     * Check if this is a fake instance
+     */
+    public function isFake(): bool
+    {
+        return $this->isFake;
     }
 }

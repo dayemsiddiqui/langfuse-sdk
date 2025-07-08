@@ -12,8 +12,15 @@ class LangfuseServiceProvider extends PackageServiceProvider
     {
         parent::register();
 
+        $this->mergeConfigFrom(__DIR__.'/../config/langfuse-sdk.php', 'langfuse-sdk');
+
         $this->app->singleton(Langfuse::class, function ($app) {
             return new Langfuse;
+        });
+
+        // Register the fake binding
+        $this->app->singleton('langfuse.fake', function ($app) {
+            return new \dayemsiddiqui\Langfuse\Testing\FakeLangfuse;
         });
     }
 
