@@ -85,7 +85,7 @@ it('can reuse prompt builder for multiple compilations', function () {
 
     $langfuse = new Langfuse;
     $promptBuilder = $langfuse->getPrompt('test-prompt');
-    
+
     $result1 = $promptBuilder->compile(['name' => 'John']);
     $result2 = $promptBuilder->compile(['name' => 'Jane']);
 

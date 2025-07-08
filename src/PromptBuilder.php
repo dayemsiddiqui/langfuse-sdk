@@ -7,6 +7,7 @@ use dayemsiddiqui\Langfuse\Exceptions\MissingPromptVariablesException;
 class PromptBuilder
 {
     protected string $promptName;
+
     protected string $promptContent;
 
     public function __construct(string $promptName, string $promptContent)
@@ -100,4 +101,4 @@ class PromptBuilder
             );
         }
     }
-} 
+}
